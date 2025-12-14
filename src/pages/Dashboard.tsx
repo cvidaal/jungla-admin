@@ -1,51 +1,66 @@
-import { useState, useMemo } from 'react';
-import { Layout } from '@/components/Layout';
-import { StatsCard } from '@/components/StatsCard';
-import { ReservaCard } from '@/components/ReservaCard';
-import { ReservaDetailModal } from '@/components/ReservaDetailModal';
-import { mockReservas } from '@/data/mockReservas';
-import { Reserva, EstadoReserva } from '@/types/reserva';
-import { 
-  Cake, 
-  CalendarDays, 
-  TrendingUp, 
+import { useState, useMemo } from "react";
+import { Layout } from "@/components/Layout";
+import { StatsCard } from "@/components/StatsCard";
+import { ReservaCard } from "@/components/ReservaCard";
+import { ReservaDetailModal } from "@/components/ReservaDetailModal";
+import { useReservas } from "@/hooks/useReservas";
+import { Reserva, EstadoReserva } from "@/types/reserva";
+import {
+  Cake,
+  CalendarDays,
+  TrendingUp,
   Euro,
   PartyPopper,
-  CalendarClock
-} from 'lucide-react';
-import { format, isToday, isFuture, addDays, isWithinInterval, startOfMonth, endOfMonth, parseISO } from 'date-fns';
-import { es } from 'date-fns/locale';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+  CalendarClock,
+} from "lucide-react";
+import {
+  format,
+  isToday,
+  isFuture,
+  addDays,
+  isWithinInterval,
+  startOfMonth,
+  endOfMonth,
+  parseISO,
+} from "date-fns";
+import { es } from "date-fns/locale";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function Dashboard() {
-  const [reservas, setReservas] = useState(mockReservas);
+  const { reservas, loading, error, updateReserva } = useReservas();
   const [selectedReserva, setSelectedReserva] = useState<Reserva | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
   const today = new Date();
-  const todayStr = format(today, 'yyyy-MM-dd');
+  const todayStr = format(today, "yyyy-MM-dd");
 
   const stats = useMemo(() => {
-    const cumplesHoy = reservas.filter(r => r.fecha_reserva === todayStr && r.estado !== 'CANCELADO');
-    
-    const next7Days = reservas.filter(r => {
+    const cumplesHoy = reservas.filter(
+      (r) => r.fecha_reserva === todayStr && r.estado !== "CANCELADO"
+    );
+
+    const next7Days = reservas.filter((r) => {
       const fecha = parseISO(r.fecha_reserva);
-      return isFuture(fecha) && 
-             isWithinInterval(fecha, { start: today, end: addDays(today, 7) }) &&
-             r.estado !== 'CANCELADO';
+      return (
+        isFuture(fecha) &&
+        isWithinInterval(fecha, { start: today, end: addDays(today, 7) }) &&
+        r.estado !== "CANCELADO"
+      );
     });
 
-    const thisMonth = reservas.filter(r => {
+    const thisMonth = reservas.filter((r) => {
       const fecha = parseISO(r.fecha_reserva);
-      return isWithinInterval(fecha, { 
-        start: startOfMonth(today), 
-        end: endOfMonth(today) 
-      }) && r.estado !== 'CANCELADO';
+      return (
+        isWithinInterval(fecha, {
+          start: startOfMonth(today),
+          end: endOfMonth(today),
+        }) && r.estado !== "CANCELADO"
+      );
     });
 
     const ingresosMes = thisMonth
-      .filter(r => r.estado === 'COMPLETADO')
+      .filter((r) => r.estado === "COMPLETADO")
       .reduce((acc, r) => acc + r.precio_total, 0);
 
     return {
@@ -54,25 +69,31 @@ export default function Dashboard() {
       cumplesMes: thisMonth.length,
       ingresosMes,
       listaCumplesHoy: cumplesHoy.sort((a, b) => a.hora.localeCompare(b.hora)),
-      listaProximos: next7Days.sort((a, b) => {
-        const dateCompare = a.fecha_reserva.localeCompare(b.fecha_reserva);
-        if (dateCompare !== 0) return dateCompare;
-        return a.hora.localeCompare(b.hora);
-      }).slice(0, 5),
+      listaProximos: next7Days
+        .sort((a, b) => {
+          const dateCompare = a.fecha_reserva.localeCompare(b.fecha_reserva);
+          if (dateCompare !== 0) return dateCompare;
+          return a.hora.localeCompare(b.hora);
+        })
+        .slice(0, 5),
     };
   }, [reservas, todayStr]);
 
-  const handleChangeEstado = (id: string, estado: EstadoReserva) => {
-    setReservas(prev => prev.map(r => 
-      r.id === id 
-        ? { ...r, estado, pagado: estado === 'COMPLETADO' } 
-        : r
-    ));
-    setSelectedReserva(prev => 
-      prev?.id === id 
-        ? { ...prev, estado, pagado: estado === 'COMPLETADO' } 
-        : prev
-    );
+  const handleChangeEstado = async (id: string, estado: EstadoReserva) => {
+    try {
+      await updateReserva(id, {
+        estado,
+        pagado: estado === "COMPLETADO",
+      });
+
+      setSelectedReserva((prev) =>
+        prev?.id === id
+          ? { ...prev, estado, pagado: estado === "COMPLETADO" }
+          : prev
+      );
+    } catch (error) {
+      console.error("Failed to update status", error);
+    }
   };
 
   const handleOpenDetail = (reserva: Reserva) => {
@@ -98,7 +119,8 @@ export default function Dashboard() {
           <Alert className="border-accent bg-accent/10 animate-slide-up">
             <PartyPopper className="h-5 w-5 text-accent" />
             <AlertTitle className="text-accent-foreground font-semibold">
-              ¡Hoy hay {stats.cumplesHoy} cumple{stats.cumplesHoy > 1 ? 's' : ''}!
+              ¡Hoy hay {stats.cumplesHoy} cumple
+              {stats.cumplesHoy > 1 ? "s" : ""}!
             </AlertTitle>
             <AlertDescription className="text-accent-foreground/80">
               Revisa los detalles abajo para tenerlo todo preparado.
@@ -123,7 +145,7 @@ export default function Dashboard() {
           <StatsCard
             title="Este mes"
             value={stats.cumplesMes}
-            subtitle={format(today, 'MMMM', { locale: es })}
+            subtitle={format(today, "MMMM", { locale: es })}
             icon={CalendarDays}
           />
           <StatsCard
@@ -147,8 +169,8 @@ export default function Dashboard() {
             <CardContent className="space-y-3">
               {stats.listaCumplesHoy.length > 0 ? (
                 stats.listaCumplesHoy.map((reserva) => (
-                  <ReservaCard 
-                    key={reserva.id} 
+                  <ReservaCard
+                    key={reserva.id}
                     reserva={reserva}
                     onClick={() => handleOpenDetail(reserva)}
                   />
@@ -173,8 +195,8 @@ export default function Dashboard() {
             <CardContent className="space-y-3">
               {stats.listaProximos.length > 0 ? (
                 stats.listaProximos.map((reserva) => (
-                  <ReservaCard 
-                    key={reserva.id} 
+                  <ReservaCard
+                    key={reserva.id}
                     reserva={reserva}
                     onClick={() => handleOpenDetail(reserva)}
                   />

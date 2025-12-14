@@ -1,21 +1,21 @@
-import { NavLink, useLocation } from 'react-router-dom';
-import { cn } from '@/lib/utils';
-import { 
-  LayoutDashboard, 
-  Calendar, 
-  List, 
+import { NavLink, useLocation } from "react-router-dom";
+import { cn } from "@/lib/utils";
+import {
+  LayoutDashboard,
+  Calendar,
+  List,
   Settings,
   TreePine,
   Moon,
-  Sun
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useState, useEffect } from 'react';
+  Sun,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
 
 const navItems = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/calendario', icon: Calendar, label: 'Calendario' },
-  { to: '/reservas', icon: List, label: 'Reservas' },
+  { to: "/", icon: LayoutDashboard, label: "Dashboard" },
+  { to: "/calendario", icon: Calendar, label: "Calendario" },
+  { to: "/reservas", icon: List, label: "Reservas" },
 ];
 
 export function AppSidebar() {
@@ -23,14 +23,14 @@ export function AppSidebar() {
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
-    const isDarkMode = document.documentElement.classList.contains('dark');
+    const isDarkMode = document.documentElement.classList.contains("dark");
     setIsDark(isDarkMode);
   }, []);
 
   const toggleTheme = () => {
     const newIsDark = !isDark;
     setIsDark(newIsDark);
-    document.documentElement.classList.toggle('dark', newIsDark);
+    document.documentElement.classList.toggle("dark", newIsDark);
   };
 
   return (
@@ -38,12 +38,14 @@ export function AppSidebar() {
       {/* Logo */}
       <div className="p-6 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl gradient-accent flex items-center justify-center">
-            <TreePine className="w-5 h-5 text-accent-foreground" />
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center">
+            <img src="../../public/favicon.ico" alt="Logo Jungla Mágica" />
           </div>
           <div>
             <h1 className="font-bold text-sidebar-foreground">Jungla Mágica</h1>
-            <p className="text-xs text-sidebar-foreground/60">Panel de Reservas</p>
+            <p className="text-xs text-sidebar-foreground/60">
+              Panel de Reservas
+            </p>
           </div>
         </div>
       </div>
@@ -58,10 +60,10 @@ export function AppSidebar() {
                 <NavLink
                   to={item.to}
                   className={cn(
-                    'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200',
+                    "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200",
                     isActive
-                      ? 'bg-sidebar-accent text-sidebar-primary'
-                      : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
+                      ? "bg-sidebar-accent text-sidebar-primary"
+                      : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
                   )}
                 >
                   <item.icon className="w-5 h-5" />
@@ -81,7 +83,7 @@ export function AppSidebar() {
           onClick={toggleTheme}
         >
           {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-          {isDark ? 'Modo claro' : 'Modo oscuro'}
+          {isDark ? "Modo claro" : "Modo oscuro"}
         </Button>
       </div>
     </aside>

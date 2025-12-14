@@ -1,20 +1,20 @@
-import { useState, useMemo } from 'react';
-import { Layout } from '@/components/Layout';
-import { StatusBadge } from '@/components/StatusBadge';
-import { ReservaDetailModal } from '@/components/ReservaDetailModal';
-import { mockReservas } from '@/data/mockReservas';
-import { Reserva, EstadoReserva, ReservaFilters } from '@/types/reserva';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { useState, useMemo } from "react";
+import { Layout } from "@/components/Layout";
+import { StatusBadge } from "@/components/StatusBadge";
+import { ReservaDetailModal } from "@/components/ReservaDetailModal";
+import { useReservas } from "@/hooks/useReservas";
+import { Reserva, EstadoReserva, ReservaFilters } from "@/types/reserva";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -22,36 +22,36 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { 
-  List, 
-  Search, 
+} from "@/components/ui/table";
+import {
+  List,
+  Search,
   Filter,
   ChevronUp,
   ChevronDown,
   Phone,
   Download,
-  X
-} from 'lucide-react';
-import { format, parseISO } from 'date-fns';
-import { es } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
+  X,
+} from "lucide-react";
+import { format, parseISO } from "date-fns";
+import { es } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 const ITEMS_PER_PAGE = 10;
 
 export default function Reservas() {
-  const [reservas, setReservas] = useState(mockReservas);
+  const { reservas, loading, error, updateReserva } = useReservas();
   const [selectedReserva, setSelectedReserva] = useState<Reserva | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  
+
   const [filters, setFilters] = useState<ReservaFilters>({
-    estado: 'TODOS',
-    busqueda: '',
-    fechaDesde: '',
-    fechaHasta: '',
+    estado: "TODOS",
+    busqueda: "",
+    fechaDesde: "",
+    fechaHasta: "",
   });
-  
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [currentPage, setCurrentPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
 
@@ -59,33 +59,34 @@ export default function Reservas() {
     let result = [...reservas];
 
     // Filter by estado
-    if (filters.estado && filters.estado !== 'TODOS') {
-      result = result.filter(r => r.estado === filters.estado);
+    if (filters.estado && filters.estado !== "TODOS") {
+      result = result.filter((r) => r.estado === filters.estado);
     }
 
     // Filter by search
     if (filters.busqueda) {
       const search = filters.busqueda.toLowerCase();
-      result = result.filter(r => 
-        r.nombre_cumpleanero.toLowerCase().includes(search) ||
-        r.nombre_reserva.toLowerCase().includes(search) ||
-        r.telefono.includes(search)
+      result = result.filter(
+        (r) =>
+          r.nombre_cumpleanero.toLowerCase().includes(search) ||
+          r.nombre_reserva.toLowerCase().includes(search) ||
+          r.telefono.includes(search)
       );
     }
 
     // Filter by date range
     if (filters.fechaDesde) {
-      result = result.filter(r => r.fecha_reserva >= filters.fechaDesde!);
+      result = result.filter((r) => r.fecha_reserva >= filters.fechaDesde!);
     }
     if (filters.fechaHasta) {
-      result = result.filter(r => r.fecha_reserva <= filters.fechaHasta!);
+      result = result.filter((r) => r.fecha_reserva <= filters.fechaHasta!);
     }
 
     // Sort
     result.sort((a, b) => {
       const dateA = new Date(a.fecha_reserva).getTime();
       const dateB = new Date(b.fecha_reserva).getTime();
-      return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+      return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
     });
 
     return result;
@@ -98,17 +99,21 @@ export default function Reservas() {
 
   const totalPages = Math.ceil(filteredReservas.length / ITEMS_PER_PAGE);
 
-  const handleChangeEstado = (id: string, estado: EstadoReserva) => {
-    setReservas(prev => prev.map(r => 
-      r.id === id 
-        ? { ...r, estado, pagado: estado === 'COMPLETADO' } 
-        : r
-    ));
-    setSelectedReserva(prev => 
-      prev?.id === id 
-        ? { ...prev, estado, pagado: estado === 'COMPLETADO' } 
-        : prev
-    );
+  const handleChangeEstado = async (id: string, estado: EstadoReserva) => {
+    try {
+      await updateReserva(id, {
+        estado,
+        pagado: estado === "COMPLETADO",
+      });
+
+      setSelectedReserva((prev) =>
+        prev?.id === id
+          ? { ...prev, estado, pagado: estado === "COMPLETADO" }
+          : prev
+      );
+    } catch (error) {
+      console.error("Failed to update status", error);
+    }
   };
 
   const handleOpenDetail = (reserva: Reserva) => {
@@ -118,17 +123,28 @@ export default function Reservas() {
 
   const clearFilters = () => {
     setFilters({
-      estado: 'TODOS',
-      busqueda: '',
-      fechaDesde: '',
-      fechaHasta: '',
+      estado: "TODOS",
+      busqueda: "",
+      fechaDesde: "",
+      fechaHasta: "",
     });
     setCurrentPage(1);
   };
 
   const exportToCSV = () => {
-    const headers = ['Fecha', 'Hora', 'Cumpleañero', 'Edad', 'Niños', 'Contacto', 'Teléfono', 'Estado', 'Total', 'Pendiente'];
-    const rows = filteredReservas.map(r => [
+    const headers = [
+      "Fecha",
+      "Hora",
+      "Cumpleañero",
+      "Edad",
+      "Niños",
+      "Contacto",
+      "Teléfono",
+      "Estado",
+      "Total",
+      "Pendiente",
+    ];
+    const rows = filteredReservas.map((r) => [
       r.fecha_reserva,
       r.hora,
       r.nombre_cumpleanero,
@@ -138,19 +154,23 @@ export default function Reservas() {
       r.telefono,
       r.estado,
       r.precio_total.toFixed(2),
-      (r.precio_total - r.senal_pagada).toFixed(2)
+      (r.precio_total - r.senal_pagada).toFixed(2),
     ]);
 
-    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const csv = [headers, ...rows].map((row) => row.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = `reservas_${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.download = `reservas_${format(new Date(), "yyyy-MM-dd")}.csv`;
     a.click();
   };
 
-  const hasActiveFilters = filters.estado !== 'TODOS' || filters.busqueda || filters.fechaDesde || filters.fechaHasta;
+  const hasActiveFilters =
+    filters.estado !== "TODOS" ||
+    filters.busqueda ||
+    filters.fechaDesde ||
+    filters.fechaHasta;
 
   return (
     <Layout>
@@ -167,15 +187,17 @@ export default function Reservas() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
               onClick={() => setShowFilters(!showFilters)}
-              className={cn(hasActiveFilters && 'border-primary text-primary')}
+              className={cn(hasActiveFilters && "border-primary text-primary")}
             >
               <Filter className="w-4 h-4 mr-1.5" />
               Filtros
-              {hasActiveFilters && <span className="ml-1.5 w-2 h-2 rounded-full bg-primary" />}
+              {hasActiveFilters && (
+                <span className="ml-1.5 w-2 h-2 rounded-full bg-primary" />
+              )}
             </Button>
             <Button variant="outline" size="sm" onClick={exportToCSV}>
               <Download className="w-4 h-4 mr-1.5" />
@@ -190,7 +212,10 @@ export default function Reservas() {
             <CardContent className="pt-6">
               <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 <div className="lg:col-span-2">
-                  <Label htmlFor="busqueda" className="text-xs text-muted-foreground">
+                  <Label
+                    htmlFor="busqueda"
+                    className="text-xs text-muted-foreground"
+                  >
                     Buscar
                   </Label>
                   <div className="relative mt-1">
@@ -200,7 +225,10 @@ export default function Reservas() {
                       placeholder="Nombre o teléfono..."
                       value={filters.busqueda}
                       onChange={(e) => {
-                        setFilters(prev => ({ ...prev, busqueda: e.target.value }));
+                        setFilters((prev) => ({
+                          ...prev,
+                          busqueda: e.target.value,
+                        }));
                         setCurrentPage(1);
                       }}
                       className="pl-9"
@@ -209,13 +237,19 @@ export default function Reservas() {
                 </div>
 
                 <div>
-                  <Label htmlFor="estado" className="text-xs text-muted-foreground">
+                  <Label
+                    htmlFor="estado"
+                    className="text-xs text-muted-foreground"
+                  >
                     Estado
                   </Label>
-                  <Select 
-                    value={filters.estado || 'TODOS'} 
+                  <Select
+                    value={filters.estado || "TODOS"}
                     onValueChange={(value) => {
-                      setFilters(prev => ({ ...prev, estado: value as EstadoReserva | 'TODOS' }));
+                      setFilters((prev) => ({
+                        ...prev,
+                        estado: value as EstadoReserva | "TODOS",
+                      }));
                       setCurrentPage(1);
                     }}
                   >
@@ -233,7 +267,10 @@ export default function Reservas() {
                 </div>
 
                 <div>
-                  <Label htmlFor="fechaDesde" className="text-xs text-muted-foreground">
+                  <Label
+                    htmlFor="fechaDesde"
+                    className="text-xs text-muted-foreground"
+                  >
                     Desde
                   </Label>
                   <Input
@@ -241,7 +278,10 @@ export default function Reservas() {
                     type="date"
                     value={filters.fechaDesde}
                     onChange={(e) => {
-                      setFilters(prev => ({ ...prev, fechaDesde: e.target.value }));
+                      setFilters((prev) => ({
+                        ...prev,
+                        fechaDesde: e.target.value,
+                      }));
                       setCurrentPage(1);
                     }}
                     className="mt-1"
@@ -249,7 +289,10 @@ export default function Reservas() {
                 </div>
 
                 <div>
-                  <Label htmlFor="fechaHasta" className="text-xs text-muted-foreground">
+                  <Label
+                    htmlFor="fechaHasta"
+                    className="text-xs text-muted-foreground"
+                  >
                     Hasta
                   </Label>
                   <Input
@@ -257,7 +300,10 @@ export default function Reservas() {
                     type="date"
                     value={filters.fechaHasta}
                     onChange={(e) => {
-                      setFilters(prev => ({ ...prev, fechaHasta: e.target.value }));
+                      setFilters((prev) => ({
+                        ...prev,
+                        fechaHasta: e.target.value,
+                      }));
                       setCurrentPage(1);
                     }}
                     className="mt-1"
@@ -287,13 +333,17 @@ export default function Reservas() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead 
+                    <TableHead
                       className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                      onClick={() =>
+                        setSortOrder((prev) =>
+                          prev === "asc" ? "desc" : "asc"
+                        )
+                      }
                     >
                       <div className="flex items-center gap-1">
                         Fecha
-                        {sortOrder === 'asc' ? (
+                        {sortOrder === "asc" ? (
                           <ChevronUp className="w-4 h-4" />
                         ) : (
                           <ChevronDown className="w-4 h-4" />
@@ -303,28 +353,38 @@ export default function Reservas() {
                     <TableHead>Hora</TableHead>
                     <TableHead>Cumpleañero</TableHead>
                     <TableHead className="hidden md:table-cell">Edad</TableHead>
-                    <TableHead className="hidden sm:table-cell">Niños</TableHead>
-                    <TableHead className="hidden lg:table-cell">Contacto</TableHead>
+                    <TableHead className="hidden sm:table-cell">
+                      Niños
+                    </TableHead>
+                    <TableHead className="hidden lg:table-cell">
+                      Contacto
+                    </TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead className="text-right">Pendiente</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginatedReservas.map((reserva) => {
-                    const pendiente = reserva.precio_total - reserva.senal_pagada;
+                    const pendiente =
+                      reserva.precio_total - reserva.senal_pagada;
                     return (
-                      <TableRow 
+                      <TableRow
                         key={reserva.id}
                         className="cursor-pointer hover:bg-muted/50"
                         onClick={() => handleOpenDetail(reserva)}
                       >
                         <TableCell className="font-medium">
-                          {format(parseISO(reserva.fecha_reserva), 'dd/MM/yyyy')}
+                          {format(
+                            parseISO(reserva.fecha_reserva),
+                            "dd/MM/yyyy"
+                          )}
                         </TableCell>
                         <TableCell>{reserva.hora}</TableCell>
                         <TableCell>
                           <div>
-                            <span className="font-medium">{reserva.nombre_cumpleanero}</span>
+                            <span className="font-medium">
+                              {reserva.nombre_cumpleanero}
+                            </span>
                             <p className="text-xs text-muted-foreground lg:hidden">
                               {reserva.nombre_reserva}
                             </p>
@@ -352,15 +412,17 @@ export default function Reservas() {
                           <StatusBadge estado={reserva.estado} />
                         </TableCell>
                         <TableCell className="text-right">
-                          <span className={cn(
-                            'font-medium',
-                            pendiente > 0 && reserva.estado !== 'CANCELADO' 
-                              ? 'text-warning' 
-                              : 'text-muted-foreground'
-                          )}>
-                            {pendiente > 0 && reserva.estado !== 'CANCELADO' 
-                              ? `${pendiente.toFixed(2)}€` 
-                              : '-'}
+                          <span
+                            className={cn(
+                              "font-medium",
+                              pendiente > 0 && reserva.estado !== "CANCELADO"
+                                ? "text-warning"
+                                : "text-muted-foreground"
+                            )}
+                          >
+                            {pendiente > 0 && reserva.estado !== "CANCELADO"
+                              ? `${pendiente.toFixed(2)}€`
+                              : "-"}
                           </span>
                         </TableCell>
                       </TableRow>
@@ -381,7 +443,7 @@ export default function Reservas() {
                     variant="outline"
                     size="sm"
                     disabled={currentPage === 1}
-                    onClick={() => setCurrentPage(prev => prev - 1)}
+                    onClick={() => setCurrentPage((prev) => prev - 1)}
                   >
                     Anterior
                   </Button>
@@ -389,7 +451,7 @@ export default function Reservas() {
                     variant="outline"
                     size="sm"
                     disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage(prev => prev + 1)}
+                    onClick={() => setCurrentPage((prev) => prev + 1)}
                   >
                     Siguiente
                   </Button>
