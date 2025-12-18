@@ -25,7 +25,7 @@ Panel de administración para gestionar reservas de cumpleaños en un parque inf
 
 <div align="center">
 
-![Dashboard Preview](https://via.placeholder.com/800x450/2d5a27/ffffff?text=Dashboard+Preview)
+![Dashboard Preview](https://www.loom.com/share/d0b4e7cb46d14452903e83ac6e888f02)
 
 *Panel de administración con vista de reservas*
 
